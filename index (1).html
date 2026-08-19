@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mood Frame</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,400;0,600;1,400&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#4b4a43;
+    --muted:#8f8e82;
+    --surface:#f5f4ef;
+    --line:#dedcd2;
+
+    --sage:#7d9c81; --sage-deep:#5c7a61; --sage-ink:#3f5844; --sage-wash:#e5ede6;
+    --lav:#bcb6e4; --lav-deep:#8f88c9; --lav-ink:#5b5595; --lav-wash:#edebf8;
+
+    /* clay depth */
+    --raise: -6px -6px 14px rgba(255,255,255,.9), 10px 13px 30px rgba(122,120,104,.22);
+    --raise-sm: -3px -3px 8px rgba(255,255,255,.85), 5px 7px 16px rgba(122,120,104,.20);
+    --inset: inset 4px 4px 10px rgba(122,120,104,.16), inset -4px -4px 10px rgba(255,255,255,.92);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:"Nunito",-apple-system,system-ui,sans-serif;
+    color:var(--ink);line-height:1.6;-webkit-font-smoothing:antialiased;
+    min-height:100vh;display:flex;justify-content:center;padding:52px 20px 90px;
+    background:
+      radial-gradient(120% 80% at 15% 0%, #eef0e9 0%, transparent 55%),
+      radial-gradient(120% 80% at 100% 10%, #efecf6 0%, transparent 50%),
+      #e9e7df;
+  }
+  .wrap{width:100%;max-width:540px}
+  .brand{
+    font-family:"Quicksand",sans-serif;font-weight:600;
+    font-size:13px;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--sage-ink);margin-bottom:26px;
+    display:inline-flex;align-items:center;gap:9px;
+  }
+  .brand .dot{width:11px;height:11px;border-radius:50%;background:var(--lav);box-shadow:var(--raise-sm)}
+  h1{
+    font-family:"Quicksand",sans-serif;font-weight:600;
+    font-size:clamp(32px,7vw,44px);line-height:1.12;letter-spacing:-.01em;margin-bottom:12px;
+  }
+  .lede{color:var(--muted);font-size:17px;max-width:42ch;margin-bottom:30px}
+
+  .panel{background:var(--surface);border-radius:26px;padding:22px;box-shadow:var(--raise)}
+  textarea{
+    width:100%;min-height:118px;resize:vertical;display:block;
+    background:var(--surface);border:none;border-radius:18px;
+    padding:18px 20px;font:inherit;color:var(--ink);box-shadow:var(--inset);
+  }
+  textarea::placeholder{color:#b0afa2}
+  textarea:focus{outline:none;box-shadow:var(--inset),0 0 0 3px var(--sage-wash)}
+  .row{display:flex;align-items:center;gap:16px;margin-top:18px;flex-wrap:wrap}
+  button{
+    font-family:"Quicksand",sans-serif;font-weight:600;font-size:16px;color:#fff;
+    background:var(--sage);border:none;border-radius:16px;padding:13px 28px;cursor:pointer;
+    box-shadow:-3px -3px 8px rgba(255,255,255,.25), 5px 8px 18px rgba(80,104,82,.4), inset 0 2px 2px rgba(255,255,255,.3);
+    transition:background .2s,transform .1s,box-shadow .2s;
+  }
+  button:hover:not(:disabled){background:var(--sage-deep)}
+  button:active:not(:disabled){transform:translateY(2px);box-shadow:var(--raise-sm)}
+  button:disabled{opacity:.6;cursor:default}
+  button:focus-visible{outline:3px solid var(--sage-wash);outline-offset:3px}
+  .hint{color:var(--muted);font-size:14px}
+
+  #stage{margin-top:34px}
+  .fade{animation:fade .55s ease both}
+  @keyframes fade{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+  .loading{display:flex;flex-direction:column;align-items:center;gap:20px;padding:30px 0;color:var(--muted)}
+  .breath{width:56px;height:56px;border-radius:50%;background:var(--lav);
+    box-shadow:-4px -4px 10px rgba(255,255,255,.7), 6px 8px 20px rgba(120,110,180,.4)}
+  @media (prefers-reduced-motion:no-preference){.breath{animation:breathe 3.6s ease-in-out infinite}}
+  @keyframes breathe{0%,100%{transform:scale(.7);opacity:.55}50%{transform:scale(1);opacity:1}}
+
+  .pill{display:inline-block;background:var(--lav-wash);color:var(--lav-ink);
+    font-family:"Quicksand",sans-serif;font-weight:600;font-size:14px;
+    padding:8px 16px;border-radius:999px;margin-bottom:22px;box-shadow:var(--raise-sm)}
+  .pill .low{color:var(--muted);font-weight:400}
+
+  figure{background:var(--surface);padding:18px;border-radius:24px;box-shadow:var(--raise)}
+  figure img{display:block;width:100%;border-radius:16px}
+  figcaption{font-family:"Nunito",serif;font-style:italic;text-align:center;
+    color:var(--muted);font-size:15px;margin-top:16px}
+
+  .support{background:var(--surface);border-radius:24px;padding:28px;box-shadow:var(--raise)}
+  .support h2{font-family:"Quicksand",sans-serif;font-weight:600;font-size:22px;margin-bottom:10px}
+  .support p{color:var(--muted);margin-bottom:20px}
+  .res{display:flex;flex-direction:column;gap:2px;padding:15px 0;border-top:1px solid var(--line)}
+  .res .name{font-weight:600}
+  .res .contact{color:var(--sage-ink)}
+
+  .error{background:#f6ebe9;border-radius:20px;padding:18px 22px;color:#8a4b45;font-size:15px;box-shadow:var(--raise-sm)}
+  .error code{background:rgba(0,0,0,.05);padding:1px 6px;border-radius:6px}
+</style>
+</head>
+<body>
+  <main class="wrap">
+    <div class="brand"><span class="dot"></span>Mood Frame</div>
+    <h1>How are you feeling?</h1>
+    <p class="lede">Say it however it comes out. I'll hold the feeling for you &mdash; as a picture to sit with.</p>
+
+    <div class="panel">
+      <textarea id="text" placeholder="Right now, I feel&hellip;"></textarea>
+      <div class="row">
+        <button id="go">Frame this feeling</button>
+        <span class="hint">The picture takes a moment to make.</span>
+      </div>
+    </div>
+
+    <section id="stage" aria-live="polite"></section>
+  </main>
+
+<script>
+  const API = "http://127.0.0.1:8000";
+  const btn = document.getElementById("go");
+  const input = document.getElementById("text");
+  const stage = document.getElementById("stage");
+
+  function show(html){ stage.innerHTML = html; stage.firstElementChild?.classList.add("fade"); }
+  function loading(){ show(`<div class="loading"><div class="breath"></div><div>Framing your moment&hellip;</div></div>`); }
+
+  function renderImage(data){
+    const e = data.detection.emotion;
+    const low = data.detection.uncertain ? ` <span class="low">&middot; not fully sure</span>` : "";
+    show(`<div>
+        <span class="pill">this reads as ${e}${low}</span>
+        <figure><img src="${data.image_url}" alt="A calming image for feeling ${e}">
+        <figcaption>Something calm to sit with</figcaption></figure>
+      </div>`);
+  }
+
+  function renderSupport(data){
+    const items = (data.resources||[]).map(r =>
+      `<div class="res"><span class="name">${r.name}</span><span class="contact">${r.contact}</span></div>`).join("");
+    show(`<div class="support">
+        <h2>You don't have to sit with this alone</h2>
+        <p>${data.message}</p>${items}
+      </div>`);
+  }
+
+  async function submit(){
+    const text = input.value.trim();
+    if(!text){ input.focus(); return; }
+    btn.disabled = true; loading();
+    try{
+      const res = await fetch(`${API}/support`, {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({ text, use_claude_prompt: true })
+      });
+      if(!res.ok) throw new Error("bad response");
+      const data = await res.json();
+      data.type === "support" ? renderSupport(data) : renderImage(data);
+    }catch(err){
+      show(`<div class="error">Couldn't reach Mood Frame. Make sure the server is running (<code>python3 app.py</code>) and try again.</div>`);
+    }finally{ btn.disabled = false; }
+  }
+
+  btn.addEventListener("click", submit);
+  input.addEventListener("keydown", e => { if((e.metaKey||e.ctrlKey) && e.key==="Enter") submit(); });
+</script>
+</body>
+</html>

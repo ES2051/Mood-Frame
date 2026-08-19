@@ -1,0 +1,13 @@
+transformers>=4.44
+torch
+fastapi
+uvicorn[standard]
+pydantic
+sentencepiece
+diffusers
+accelerate
+anthropic
+datasets
+evaluate
+scikit-learn
+bleak

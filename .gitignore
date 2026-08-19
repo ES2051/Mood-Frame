@@ -1,0 +1,24 @@
+# Python
+venv/
+.venv/
+__pycache__/
+*.pyc
+
+# Large trained model checkpoints / weights (too big for GitHub, regenerate via finetune scripts)
+emotion-model/
+emotion-model-final/
+emotion-model-goemotions/
+emotion-model-goemotions-weighted/
+goemotions-ckpt/
+goemotions-weighted-ckpt/
+
+# Firmware build artifacts
+tag_firmware/build/
+tag_firmware/managed_components/
+
+# Generated runtime output
+generated/
+
+# Misc
+.DS_Store
+*.zip

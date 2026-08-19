@@ -1,0 +1,23 @@
+{
+    "C_Cpp.intelliSenseEngine": "default",
+    "idf.adapterTargetName": "esp32s3",
+    "idf.customExtraVars": {
+        "OPENOCD_SCRIPTS": "c:\\ESP32\\TOOL\\tools\\openocd-esp32\\v0.12.0-esp32-20260424/openocd-esp32/share/openocd/scripts",
+        "IDF_CCACHE_ENABLE": "1",
+        "ESP_ROM_ELF_DIR": "c:\\ESP32\\TOOL\\tools\\esp-rom-elfs\\20241011/"
+    },
+    "idf.espIdfPath": "/Users/mj/esp/esp-idf",
+    "idf.openOcdConfigs": [
+        "interface/ftdi/esp32_devkitj_v1.cfg",
+        "target/esp32.cfg"
+    ],
+    "idf.port": "/dev/tty.debug-console",
+    "idf.pythonBinPath": "/opt/homebrew/bin/python3",
+    "idf.toolsPath": "/Users/mj/.espressif",
+    "idf.espIdfPathWin": "c:\\ESP32\\BASIC\\v6.0.2\\esp-idf",
+    "idf.pythonBinPathWin": "c:\\ESP32\\TOOL\\python_env\\idf6.0_py3.11_env\\Scripts\\python.exe",
+    "idf.toolsPathWin": "c:\\ESP32\\TOOL",
+    "idf.customExtraPaths": "c:\\ESP32\\TOOL\\tools\\xtensa-esp-elf-gdb\\17.1_20260402\\xtensa-esp-elf-gdb\\bin;c:\\ESP32\\TOOL\\tools\\riscv32-esp-elf-gdb\\17.1_20260402\\riscv32-esp-elf-gdb\\bin;c:\\ESP32\\TOOL\\tools\\xtensa-esp-elf\\esp-15.2.0_20251204\\xtensa-esp-elf\\bin;c:\\ESP32\\TOOL\\tools\\riscv32-esp-elf\\esp-15.2.0_20251204\\riscv32-esp-elf\\bin;c:\\ESP32\\TOOL\\tools\\esp32ulp-elf\\2.38_20240113\\esp32ulp-elf\\bin;c:\\ESP32\\TOOL\\tools\\cmake\\4.0.3\\bin;c:\\ESP32\\TOOL\\tools\\openocd-esp32\\v0.12.0-esp32-20260424\\openocd-esp32\\bin;c:\\ESP32\\TOOL\\tools\\ninja\\1.12.1;c:\\ESP32\\TOOL\\tools\\idf-exe\\1.0.3;c:\\ESP32\\TOOL\\tools\\ccache\\4.12.1\\ccache-4.12.1-windows-x86_64;c:\\ESP32\\TOOL\\tools\\dfu-util\\0.11\\dfu-util-0.11-win64;c:\\ESP32\\TOOL\\tools\\esp-rom-elfs\\20241011",
+    "idf.gitPathWin": "c:\\ESP32\\TOOL\\tools\\idf-git\\2.39.2\\cmd\\git.exe",
+    "idf.portWin": "COM11"
+}
