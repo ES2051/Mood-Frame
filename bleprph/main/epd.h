@@ -26,4 +26,6 @@ esp_err_t epd_task_start(void);
 /* BLE에서 기본 이미지 표시를 요청할 때 호출 */
 esp_err_t epd_request_default_image(void);
 
+esp_err_t epd_request_image(const uint8_t *image, size_t length);
+
 #endif

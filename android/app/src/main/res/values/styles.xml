@@ -1,0 +1,8 @@
+<resources>
+    <style name="Theme.MoodFrame" parent="android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:navigationBarColor">#FFF7F7</item>
+        <item name="android:statusBarColor">#F3EFFA</item>
+    </style>
+</resources>

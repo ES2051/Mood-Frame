@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stddef.h>
+#include <string.h>
 
 #include "esp_log.h"
 #include "esp_err.h"
@@ -25,10 +26,12 @@ static const char *TAG = "EPD";
 
 typedef enum
 {
-    EPD_REQUEST_DEFAULT_IMAGE
+    EPD_REQUEST_DEFAULT_IMAGE,
+    EPD_REQUEST_RECEIVED_IMAGE
 } epd_request_t;
 
 static QueueHandle_t epd_queue = NULL;
+static uint8_t received_image[EPD_IMAGE_SIZE];
 
 typedef uint8_t  u8;
 typedef uint32_t u32;
@@ -451,6 +454,33 @@ static void epd_task(void *arg)
                     break;
                 }
 
+                case EPD_REQUEST_RECEIVED_IMAGE:
+                {
+                    ESP_LOGI(TAG, "Received image update started");
+
+                    esp_err_t ret =
+                        epd_display_image(received_image,
+                                          sizeof(received_image));
+
+                    if (ret == ESP_OK)
+                    {
+                        ESP_LOGI(
+                            TAG,
+                            "Received image displayed"
+                        );
+                    }
+                    else
+                    {
+                        ESP_LOGE(
+                            TAG,
+                            "Received image display failed: %s",
+                            esp_err_to_name(ret)
+                        );
+                    }
+
+                    break;
+                }
+
                 default:
                     ESP_LOGW(
                         TAG,
@@ -540,6 +570,48 @@ esp_err_t epd_request_default_image(void)
     }
 
     ESP_LOGI(TAG, "Default image request queued");
+
+    return ESP_OK;
+}
+
+esp_err_t epd_request_image(const uint8_t *image, size_t length)
+{
+    if (epd_queue == NULL)
+    {
+        ESP_LOGE(TAG, "EPD queue is not initialized");
+        return ESP_ERR_INVALID_STATE;
+    }
+
+    if (image == NULL)
+    {
+        ESP_LOGE(TAG, "Image pointer is NULL");
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    if (length != EPD_IMAGE_SIZE)
+    {
+        ESP_LOGE(TAG,
+                 "Invalid received image size: %u, expected: %u",
+                 (unsigned)length,
+                 (unsigned)EPD_IMAGE_SIZE);
+        return ESP_ERR_INVALID_SIZE;
+    }
+
+    memcpy(received_image, image, sizeof(received_image));
+
+    epd_request_t request =
+        EPD_REQUEST_RECEIVED_IMAGE;
+
+    if (xQueueSend(
+            epd_queue,
+            &request,
+            0) != pdTRUE)
+    {
+        ESP_LOGW(TAG, "EPD queue is full");
+        return ESP_ERR_TIMEOUT;
+    }
+
+    ESP_LOGI(TAG, "Received image request queued");
 
     return ESP_OK;
 }

@@ -51,10 +51,39 @@ static const ble_uuid128_t gatt_svr_dsc_uuid =
     BLE_UUID128_INIT(0x01, 0x01, 0x01, 0x01, 0x12, 0x12, 0x12, 0x12,
                      0x23, 0x23, 0x23, 0x23, 0x34, 0x34, 0x34, 0x34);
 
+/* Service:             7a0247e0-4b3a-4bde-9e1f-1c9b6a4f9001
+ * Image char (write):   7a0247e1-4b3a-4bde-9e1f-1c9b6a4f9002
+ * Status char (notify): 7a0247e2-4b3a-4bde-9e1f-1c9b6a4f9003 */
+static const ble_uuid128_t mood_frame_svc_uuid =
+    BLE_UUID128_INIT(0x01, 0x90, 0x4f, 0x6a, 0x9b, 0x1c, 0x1f, 0x9e,
+                     0xde, 0x4b, 0x3a, 0x4b, 0xe0, 0x47, 0x02, 0x7a);
+
+static const ble_uuid128_t mood_frame_image_chr_uuid =
+    BLE_UUID128_INIT(0x02, 0x90, 0x4f, 0x6a, 0x9b, 0x1c, 0x1f, 0x9e,
+                     0xde, 0x4b, 0x3a, 0x4b, 0xe1, 0x47, 0x02, 0x7a);
+
+static const ble_uuid128_t mood_frame_status_chr_uuid =
+    BLE_UUID128_INIT(0x03, 0x90, 0x4f, 0x6a, 0x9b, 0x1c, 0x1f, 0x9e,
+                     0xde, 0x4b, 0x3a, 0x4b, 0xe2, 0x47, 0x02, 0x7a);
+
+static uint16_t mood_frame_status_chr_val_handle;
+static uint8_t mood_frame_image_buf[EPD_IMAGE_SIZE];
+static size_t mood_frame_image_recv_len;
+
 static int
 gatt_svc_access(uint16_t conn_handle, uint16_t attr_handle,
                 struct ble_gatt_access_ctxt *ctxt,
                 void *arg);
+
+static int
+mood_frame_image_access(uint16_t conn_handle, uint16_t attr_handle,
+                        struct ble_gatt_access_ctxt *ctxt,
+                        void *arg);
+
+static int
+mood_frame_status_access(uint16_t conn_handle, uint16_t attr_handle,
+                         struct ble_gatt_access_ctxt *ctxt,
+                         void *arg);
 
 static const struct ble_gatt_svc_def gatt_svr_svcs[] = {
     {
@@ -94,9 +123,120 @@ static const struct ble_gatt_svc_def gatt_svr_svcs[] = {
     },
 
     {
+        .type = BLE_GATT_SVC_TYPE_PRIMARY,
+        .uuid = &mood_frame_svc_uuid.u,
+        .characteristics = (struct ble_gatt_chr_def[])
+        { {
+                .uuid = &mood_frame_image_chr_uuid.u,
+                .access_cb = mood_frame_image_access,
+                .flags = BLE_GATT_CHR_F_WRITE | BLE_GATT_CHR_F_WRITE_NO_RSP,
+            }, {
+                .uuid = &mood_frame_status_chr_uuid.u,
+                .access_cb = mood_frame_status_access,
+                .flags = BLE_GATT_CHR_F_READ | BLE_GATT_CHR_F_NOTIFY,
+                .val_handle = &mood_frame_status_chr_val_handle,
+            }, {
+                0,
+            }
+        },
+    },
+
+    {
         0, /* No more services. */
     },
 };
+
+static void
+mood_frame_notify_status(uint16_t conn_handle, uint8_t status)
+{
+    if (conn_handle == BLE_HS_CONN_HANDLE_NONE ||
+        mood_frame_status_chr_val_handle == 0)
+    {
+        return;
+    }
+
+    struct os_mbuf *om = ble_hs_mbuf_from_flat(&status, sizeof(status));
+    if (om != NULL)
+    {
+        ble_gatts_notify_custom(conn_handle,
+                                mood_frame_status_chr_val_handle,
+                                om);
+    }
+}
+
+static int
+mood_frame_image_access(uint16_t conn_handle, uint16_t attr_handle,
+                        struct ble_gatt_access_ctxt *ctxt,
+                        void *arg)
+{
+    if (ctxt->op != BLE_GATT_ACCESS_OP_WRITE_CHR)
+    {
+        return BLE_ATT_ERR_UNLIKELY;
+    }
+
+    uint16_t om_len = OS_MBUF_PKTLEN(ctxt->om);
+    if (om_len > 0 &&
+        mood_frame_image_recv_len + om_len > sizeof(mood_frame_image_buf))
+    {
+        ESP_LOGW("BLE",
+                 "Image transfer overflow, resetting buffer");
+        mood_frame_image_recv_len = 0;
+    }
+
+    int rc = ble_hs_mbuf_to_flat(
+        ctxt->om,
+        &mood_frame_image_buf[mood_frame_image_recv_len],
+        sizeof(mood_frame_image_buf) - mood_frame_image_recv_len,
+        NULL
+    );
+
+    if (rc != 0)
+    {
+        return BLE_ATT_ERR_UNLIKELY;
+    }
+
+    mood_frame_image_recv_len += om_len;
+
+    if (mood_frame_image_recv_len >= sizeof(mood_frame_image_buf))
+    {
+        ESP_LOGI("BLE",
+                 "Image received over BLE: %u bytes",
+                 (unsigned)mood_frame_image_recv_len);
+
+        esp_err_t epd_ret =
+            epd_request_image(mood_frame_image_buf,
+                              sizeof(mood_frame_image_buf));
+
+        mood_frame_image_recv_len = 0;
+        mood_frame_notify_status(conn_handle,
+                                 epd_ret == ESP_OK ? 1 : 2);
+
+        if (epd_ret != ESP_OK)
+        {
+            ESP_LOGE("BLE",
+                     "Failed to queue received image: %s",
+                     esp_err_to_name(epd_ret));
+            return BLE_ATT_ERR_UNLIKELY;
+        }
+    }
+
+    return 0;
+}
+
+static int
+mood_frame_status_access(uint16_t conn_handle, uint16_t attr_handle,
+                         struct ble_gatt_access_ctxt *ctxt,
+                         void *arg)
+{
+    static const uint8_t idle = 0;
+    if (ctxt->op == BLE_GATT_ACCESS_OP_READ_CHR)
+    {
+        int rc = os_mbuf_append(ctxt->om, &idle, sizeof(idle));
+        return rc == 0 ? 0 : BLE_ATT_ERR_INSUFFICIENT_RES;
+    }
+
+    return BLE_ATT_ERR_UNLIKELY;
+}
 
 static int
 gatt_svr_write(struct os_mbuf *om, uint16_t min_len, uint16_t max_len,
