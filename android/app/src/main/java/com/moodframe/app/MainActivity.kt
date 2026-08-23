@@ -2,6 +2,7 @@ package com.moodframe.app
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.app.Activity
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothGatt
@@ -85,6 +86,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -108,12 +110,16 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import java.io.File
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.UUID
@@ -362,6 +368,7 @@ private fun SignUpScreen(onBack: () -> Unit, onCreated: () -> Unit) {
 @Composable
 private fun MainScreen(currentUser: String, onLogout: () -> Unit) {
     val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
     val bleManager = remember { AndroidBleManager(context.applicationContext) }
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
@@ -390,6 +397,29 @@ private fun MainScreen(currentUser: String, onLogout: () -> Unit) {
     }
     val savedImages = remember { mutableStateListOf<Bitmap>() }
 
+    DisposableEffect(lifecycleOwner, bleManager) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_DESTROY ||
+                (event == Lifecycle.Event.ON_STOP && (context as? Activity)?.isFinishing == true)
+            ) {
+                bleManager.disconnect()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+            bleManager.disconnect()
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        val loadedImages = withContext(Dispatchers.IO) {
+            loadSavedImages(context.applicationContext)
+        }
+        savedImages.clear()
+        savedImages.addAll(loadedImages)
+    }
+
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
@@ -414,6 +444,7 @@ private fun MainScreen(currentUser: String, onLogout: () -> Unit) {
                     TextButton(
                         onClick = {
                             scope.launch { drawerState.close() }
+                            bleManager.disconnect()
                             onLogout()
                         },
                         modifier = Modifier.padding(horizontal = 16.dp)
@@ -490,7 +521,14 @@ private fun MainScreen(currentUser: String, onLogout: () -> Unit) {
                             )
                             AppPage.SendFrame -> SendFramePage(
                                 bleManager = bleManager,
-                                onImageSent = { bitmap -> savedImages.add(0, bitmap) }
+                                onImageSent = { bitmap ->
+                                    scope.launch {
+                                        withContext(Dispatchers.IO) {
+                                            saveSentImage(context.applicationContext, bitmap)
+                                        }
+                                        savedImages.add(0, bitmap)
+                                    }
+                                }
                             )
                             AppPage.Records -> RecordsPage(records)
                             AppPage.Diary -> DiaryPage(diary)
@@ -960,6 +998,29 @@ private fun Context.decodeBitmap(uri: Uri): Bitmap? {
     return contentResolver.openInputStream(uri)?.use { input ->
         BitmapFactory.decodeStream(input)
     }
+}
+
+private fun savedImageDirectory(context: Context): File {
+    return File(context.filesDir, "sent_images").apply {
+        if (!exists()) mkdirs()
+    }
+}
+
+private fun saveSentImage(context: Context, bitmap: Bitmap): File {
+    val file = File(savedImageDirectory(context), "sent_${System.currentTimeMillis()}.png")
+    file.outputStream().use { output ->
+        bitmap.compress(Bitmap.CompressFormat.PNG, 100, output)
+    }
+    return file
+}
+
+private fun loadSavedImages(context: Context): List<Bitmap> {
+    val directory = savedImageDirectory(context)
+    return directory
+        .listFiles { file -> file.isFile && file.extension.equals("png", ignoreCase = true) }
+        .orEmpty()
+        .sortedByDescending { it.lastModified() }
+        .mapNotNull { file -> BitmapFactory.decodeFile(file.absolutePath) }
 }
 
 private fun Context.isLocationEnabled(): Boolean {
