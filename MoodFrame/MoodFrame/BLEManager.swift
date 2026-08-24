@@ -14,6 +14,14 @@ struct DiscoveredDevice: Identifiable, Equatable {
     }
 }
 
+enum TagSendState: Equatable {
+    case idle
+    case sending
+    case waitingForRender
+    case succeeded
+    case failed(String)
+}
+
 enum BLEConnectionState: Equatable {
     case poweredOff          // 아이폰 블루투스가 꺼져 있음
     case unauthorized        // 앱에 블루투스 권한이 없음
@@ -38,19 +46,24 @@ final class BLEManager: NSObject, ObservableObject {
     // startScanning()에서 withServices: [ESP32ServiceUUID] 로 바꾸면 해당 기기만 필터링해서 보여줄 수 있습니다.
     static let esp32ServiceUUID: CBUUID? = nil
 
-    // bleprph 펌웨어(gatt_svr.c)에 정의된 커맨드용 캐릭터리스틱 UUID.
-    // 이 캐릭터리스틱에 0x01을 쓰면 ESP32가 EPD 갱신을 트리거합니다.
-    static let commandCharacteristicUUID = CBUUID(string: "33333333-2222-2222-1111-111100000000")
+    // EPD_TEST_01 태그 펌웨어(ble_epd.c)의 GATT 서비스/캐릭터리스틱.
+    // Mood-Frame 백엔드의 config.py와 반드시 같은 값이어야 합니다.
+    static let tagServiceUUID = CBUUID(string: "7a0247e0-4b3a-4bde-9e1f-1c9b6a4f9001")
+    static let tagImageCharUUID = CBUUID(string: "7a0247e1-4b3a-4bde-9e1f-1c9b6a4f9002")
+    static let tagStatusCharUUID = CBUUID(string: "7a0247e2-4b3a-4bde-9e1f-1c9b6a4f9003")
+    private static let imageChunkSize = 180
+    private static let renderTimeoutSeconds: UInt64 = 20
 
     @Published private(set) var state: BLEConnectionState = .idle
     @Published private(set) var discoveredDevices: [DiscoveredDevice] = []
-    /// 연결된 기기에서 커맨드 캐릭터리스틱을 찾아서 write할 준비가 됐는지 여부.
-    @Published private(set) var canSendCommand: Bool = false
+    @Published private(set) var tagSendState: TagSendState = .idle
 
     private var centralManager: CBCentralManager!
     private var connectingPeripheral: CBPeripheral?
-    private var commandCharacteristic: CBCharacteristic?
-    private var pendingSendCompletion: ((Bool) -> Void)?
+    private var imageCharacteristic: CBCharacteristic?
+    private var statusCharacteristic: CBCharacteristic?
+    private var renderContinuation: CheckedContinuation<Bool, Never>?
+    private var renderTimeoutTask: Task<Void, Never>?
 
     override init() {
         super.init()
@@ -90,19 +103,55 @@ final class BLEManager: NSObject, ObservableObject {
         }
     }
 
-    /// 연결된 기기의 커맨드 캐릭터리스틱에 1바이트 값을 씁니다.
-    /// (bleprph 쪽 `gatt_svc_access`의 WRITE_CHR 분기가 이 값을 받습니다. 0x01 = EPD 기본 이미지 표시)
-    /// - completion: write 성공/실패를 알려줍니다. 메인 스레드에서 호출됩니다.
-    func sendCommand(_ value: UInt8, completion: ((Bool) -> Void)? = nil) {
-        guard let peripheral = connectingPeripheral,
-              let characteristic = commandCharacteristic else {
-            completion?(false)
+    // MARK: - 태그로 이미지 전송
+
+    /// EPDImagePacker.pack()으로 만든 8000바이트 이미지를 180바이트씩 나눠 태그에 씁니다.
+    /// 태그가 렌더링을 끝내면 status characteristic이 notify를 보내오는데, 그걸 기다립니다.
+    func sendImage(_ data: Data) {
+        guard let peripheral = connectingPeripheral, let imageChar = imageCharacteristic else {
+            tagSendState = .failed("연결된 태그가 없어요. 먼저 블루투스로 태그에 연결해주세요.")
+            return
+        }
+        guard data.count == EPDImagePacker.imageSize else {
+            tagSendState = .failed("이미지 크기가 올바르지 않아요.")
             return
         }
 
-        pendingSendCompletion = completion
-        let data = Data([value])
-        peripheral.writeValue(data, for: characteristic, type: .withResponse)
+        renderTimeoutTask?.cancel()
+        if let pending = renderContinuation {
+            renderContinuation = nil
+            pending.resume(returning: false)
+        }
+
+        tagSendState = .sending
+
+        Task {
+            var offset = 0
+            while offset < data.count {
+                let end = min(offset + Self.imageChunkSize, data.count)
+                let chunk = data.subdata(in: offset..<end)
+                peripheral.writeValue(chunk, for: imageChar, type: .withoutResponse)
+                offset = end
+                try? await Task.sleep(nanoseconds: 10_000_000)
+            }
+
+            await MainActor.run { self.tagSendState = .waitingForRender }
+
+            let rendered = await withCheckedContinuation { (continuation: CheckedContinuation<Bool, Never>) in
+                self.renderContinuation = continuation
+                self.renderTimeoutTask = Task {
+                    try? await Task.sleep(nanoseconds: Self.renderTimeoutSeconds * 1_000_000_000)
+                    if let pending = self.renderContinuation {
+                        self.renderContinuation = nil
+                        pending.resume(returning: false)
+                    }
+                }
+            }
+
+            await MainActor.run {
+                self.tagSendState = rendered ? .succeeded : .failed("태그로부터 응답이 없어요.")
+            }
+        }
     }
 
     private func syncStateFromManager() {
@@ -149,16 +198,14 @@ extension BLEManager: CBCentralManagerDelegate {
 
     func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: Error?) {
         connectingPeripheral = nil
-        commandCharacteristic = nil
-        canSendCommand = false
+        imageCharacteristic = nil
+        statusCharacteristic = nil
         state = .idle
     }
 }
 
 extension BLEManager: CBPeripheralDelegate {
     func peripheral(_ peripheral: CBPeripheral, didDiscoverServices error: Error?) {
-        // 모든 서비스에서 캐릭터리스틱을 탐색합니다. 커맨드 캐릭터리스틱은
-        // didDiscoverCharacteristicsFor에서 UUID로 찾아 저장합니다.
         guard error == nil, let services = peripheral.services else { return }
         for service in services {
             peripheral.discoverCharacteristics(nil, for: service)
@@ -166,28 +213,23 @@ extension BLEManager: CBPeripheralDelegate {
     }
 
     func peripheral(_ peripheral: CBPeripheral, didDiscoverCharacteristicsFor service: CBService, error: Error?) {
-        guard error == nil, let characteristics = service.characteristics else { return }
-
-        // UUID가 정확히 일치하는 커맨드 캐릭터리스틱을 우선 사용.
-        if let match = characteristics.first(where: { $0.uuid == BLEManager.commandCharacteristicUUID }) {
-            commandCharacteristic = match
-            canSendCommand = true
-            return
-        }
-
-        // 펌웨어가 다르거나 UUID가 조금 다를 때를 위한 대비: write 가능한 캐릭터리스틱을 대신 사용.
-        if commandCharacteristic == nil,
-           let fallback = characteristics.first(where: {
-               $0.properties.contains(.write) || $0.properties.contains(.writeWithoutResponse)
-           }) {
-            commandCharacteristic = fallback
-            canSendCommand = true
+        guard error == nil, service.uuid == Self.tagServiceUUID, let characteristics = service.characteristics else { return }
+        for characteristic in characteristics {
+            if characteristic.uuid == Self.tagImageCharUUID {
+                imageCharacteristic = characteristic
+            } else if characteristic.uuid == Self.tagStatusCharUUID {
+                statusCharacteristic = characteristic
+                peripheral.setNotifyValue(true, for: characteristic)
+            }
         }
     }
 
-    func peripheral(_ peripheral: CBPeripheral, didWriteValueFor characteristic: CBCharacteristic, error: Error?) {
-        let completion = pendingSendCompletion
-        pendingSendCompletion = nil
-        completion?(error == nil)
+    func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
+        guard error == nil, characteristic.uuid == Self.tagStatusCharUUID else { return }
+        renderTimeoutTask?.cancel()
+        if let pending = renderContinuation {
+            renderContinuation = nil
+            pending.resume(returning: true)
+        }
     }
 }
