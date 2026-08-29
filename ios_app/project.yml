@@ -1,0 +1,26 @@
+name: MoodFrame
+options:
+  bundleIdPrefix: com.moodframe
+  deploymentTarget:
+    iOS: "16.0"
+targets:
+  MoodFrame:
+    type: application
+    platform: iOS
+    deploymentTarget: "16.0"
+    sources:
+      - path: MoodFrame
+    info:
+      path: MoodFrame/Info.plist
+      properties:
+        UILaunchScreen: {}
+        NSBluetoothAlwaysUsageDescription: "기기 연결을 위해 블루투스를 사용합니다."
+        NSBluetoothPeripheralUsageDescription: "기기 연결을 위해 블루투스를 사용합니다."
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.moodframe.app
+        DEVELOPMENT_TEAM: ""
+        CODE_SIGN_STYLE: Automatic
+        SWIFT_VERSION: "5.0"
+        TARGETED_DEVICE_FAMILY: "1"
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: NO

@@ -1,0 +1,20 @@
+# Model weights -- too large for a normal git push (GitHub blocks files > 100MB).
+# See README.md for where to get / regenerate this.
+backend/emotion-model-goemotions/
+
+# Generated images / local artifacts
+backend/generated/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Xcode
+DerivedData/
+*.xcuserstate
+xcuserdata/
+
+# macOS
+.DS_Store

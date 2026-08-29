@@ -1,0 +1,26 @@
+# macOS
+.DS_Store
+
+# Xcode
+DerivedData/
+build/
+*.xcuserstate
+xcuserdata/
+*.xccheckout
+*.xcscmblueprint
+
+# Xcode - Project (keep shared scheme/workspace data, ignore per-user data)
+*.xcodeproj/xcuserdata/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+*.xcworkspace/xcuserdata/
+
+# Swift Package Manager
+.build/
+.swiftpm/
+
+# CocoaPods / Carthage (not used now, but harmless to ignore if introduced later)
+Pods/
+Carthage/Build/
+
+# Stray local backup zip of .xcodeproj (contains personal xcuserstate, not project source)
+MoodFrame.xcodeproj.zip
