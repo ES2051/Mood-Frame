@@ -11,6 +11,11 @@ struct SplashView: View {
             VStack(spacing: 18) {
                 Spacer()
 
+                Image(systemName: "leaf.fill")
+                    .font(.system(size: 44))
+                    .foregroundStyle(Theme.titleGradient)
+                    .padding(.bottom, 4)
+
                 VStack(spacing: 4) {
                     Text("Mood")
                         .font(.custom("Georgia-BoldItalic", size: 56))
