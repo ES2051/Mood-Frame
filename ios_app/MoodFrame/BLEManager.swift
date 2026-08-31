@@ -154,6 +154,17 @@ final class BLEManager: NSObject, ObservableObject {
         }
     }
 
+    /// 새 이미지를 열 때 이전에 다른 이미지를 보냈던 상태("태그에 표시했어요" 등)가
+    /// 화면에 그대로 남아 보이지 않도록 초기화합니다. 전송이 진행 중일 때는 건드리지 않습니다.
+    func resetTagSendState() {
+        switch tagSendState {
+        case .sending, .waitingForRender:
+            return
+        default:
+            tagSendState = .idle
+        }
+    }
+
     private func syncStateFromManager() {
         switch centralManager.state {
         case .poweredOff:

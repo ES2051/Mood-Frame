@@ -111,6 +111,11 @@ private struct GalleryImageDetailSheet: View {
                 }
             }
         }
+        .onAppear {
+            // 이전에 다른 이미지를 전송했던 "태그에 표시했어요" 같은 상태가
+            // 이 이미지를 열자마자 보이지 않도록 초기화합니다.
+            bleManager.resetTagSendState()
+        }
     }
 
     private func sendToTagButton(uiImage: UIImage) -> some View {
