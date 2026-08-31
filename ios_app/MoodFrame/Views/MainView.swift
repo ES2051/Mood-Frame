@@ -78,7 +78,7 @@ private struct SaveConfirmCard: View {
 struct MainView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
     @EnvironmentObject var moodStore: MoodStore
-    @StateObject private var bleManager = BLEManager()
+    @EnvironmentObject var bleManager: BLEManager
 
     @State private var showBLESheet = false
     @State private var showSideMenu = false
@@ -557,4 +557,5 @@ private struct SaveToDiarySheet: View {
     MainView()
         .environmentObject(AuthViewModel())
         .environmentObject(MoodStore())
+        .environmentObject(BLEManager())
 }

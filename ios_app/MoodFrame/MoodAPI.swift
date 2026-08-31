@@ -33,7 +33,7 @@ final class MoodAPI {
     static let shared = MoodAPI()
 
     /// Local `mock_app.py` running on the Mac. Phone and Mac must be on the same Wi-Fi.
-    var baseURL = URL(string: "http://172.30.1.9:8000")!
+    var baseURL = URL(string: "http://192.168.192.4:8000")!
 
     private let session = URLSession.shared
 
