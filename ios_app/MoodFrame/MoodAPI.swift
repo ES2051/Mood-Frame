@@ -33,7 +33,9 @@ final class MoodAPI {
     static let shared = MoodAPI()
 
     /// Local `mock_app.py` running on the Mac. Phone and Mac must be on the same Wi-Fi.
-    var baseURL = URL(string: "http://192.168.192.4:8000")!
+    /// Uses the Mac's Bonjour hostname instead of its DHCP-assigned IP so this
+    /// keeps working even after the Mac's IP changes (Wi-Fi reconnects, etc.).
+    var baseURL = URL(string: "http://MJui-MacBookPro.local:8000")!
 
     private let session = URLSession.shared
 
