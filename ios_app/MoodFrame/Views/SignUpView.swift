@@ -51,10 +51,11 @@ struct SignUpView: View {
                         message = "비밀번호가 일치하지 않습니다."
                         return
                     }
-                    if authViewModel.signUp(id: id, password: password) {
+                    do {
+                        try authViewModel.signUp(id: id, password: password)
                         dismiss()
-                    } else {
-                        message = "아이디와 비밀번호를 입력해주세요."
+                    } catch {
+                        message = error.localizedDescription
                     }
                 } label: {
                     Text("가입 완료")
