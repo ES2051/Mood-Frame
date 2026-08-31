@@ -1,0 +1,2 @@
+backend/emotion-model-goemotions/*.safetensors filter=lfs diff=lfs merge=lfs -text
+backend/emotion-model-goemotions/*.bin filter=lfs diff=lfs merge=lfs -text

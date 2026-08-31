@@ -50,7 +50,20 @@ pipeline into memory). Each `/support` call after that takes ~20-35s on
 Apple Silicon (MPS) since it runs real local image generation.
 
 `backend/emotion-model-goemotions/` is the actual fine-tuned model
-referenced by `config.py`'s `EMOTION_MODEL` — no download needed.
+referenced by `config.py`'s `EMOTION_MODEL` — it's committed to this repo
+via Git LFS, so no separate download is needed. Just make sure Git LFS is
+installed *before* cloning (or run `git lfs pull` after, if you already
+cloned without it):
+
+```bash
+brew install git-lfs   # or your platform's equivalent
+git lfs install
+git clone https://github.com/ES2051/Mood-Frame.git
+```
+
+Without Git LFS, `model.safetensors` will just be a small text pointer
+file instead of the real ~476MB weights, and the backend will fail to
+load the model.
 
 ## Running the iOS app
 
